@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Save Claude session transcripts.
+# Works as both:
+# 1. A Claude SessionEnd hook (receives JSON on stdin with transcript_path)
+# 2. A git pre-commit hook (copies transcripts into .claude-sessions/ and stages them)
+#
+# Claude stores transcripts at ~/.claude/projects/<encoded-path>/*.jsonl
+# where <encoded-path> replaces / with - in the project directory path.
+
+project_dir="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
+if [ -z "$project_dir" ]; then
+  exit 0
+fi
+
+session_dir="$project_dir/.claude-sessions"
+
+copy_transcripts() {
+  encoded_path=$(echo "$project_dir" | sed 's|/|-|g')
+  claude_dir="$HOME/.claude/projects/$encoded_path"
+  if [ -d "$claude_dir" ]; then
+    mkdir -p "$session_dir"
+    cp "$claude_dir"/*.jsonl "$session_dir/" 2>/dev/null
+  fi
+}
+
+if [ -n "$CLAUDE_SESSION_ID" ]; then
+  # Running as a Claude SessionEnd hook
+  cat > /dev/null  # consume stdin
+  copy_transcripts
+else
+  # Running as a git pre-commit hook
+  copy_transcripts
+  if [ -d "$session_dir" ]; then
+    git add "$session_dir"/*.jsonl 2>/dev/null
+  fi
+fi
