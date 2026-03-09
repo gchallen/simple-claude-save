@@ -16,12 +16,19 @@ fi
 session_dir="$project_dir/.claude-sessions"
 
 copy_transcripts() {
-  encoded_path=$(echo "$project_dir" | sed 's|/|-|g')
-  claude_dir="$HOME/.claude/projects/$encoded_path"
-  if [ -d "$claude_dir" ]; then
-    mkdir -p "$session_dir"
-    cp "$claude_dir"/*.jsonl "$session_dir/" 2>/dev/null
-  fi
+  # Try multiple path encodings to handle Mac, Linux, and Windows (MSYS2/Git Bash)
+  for encoded_path in \
+    "$(echo "$project_dir" | sed 's|/|-|g')" \
+    "$(cygpath -w "$project_dir" 2>/dev/null | sed 's|[:/\\]|-|g')" \
+  ; do
+    [ -z "$encoded_path" ] && continue
+    claude_dir="$HOME/.claude/projects/$encoded_path"
+    if [ -d "$claude_dir" ]; then
+      mkdir -p "$session_dir"
+      cp "$claude_dir"/*.jsonl "$session_dir/" 2>/dev/null
+      break
+    fi
+  done
 }
 
 if [ -n "$CLAUDE_SESSION_ID" ]; then
