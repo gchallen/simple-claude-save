@@ -37,8 +37,12 @@ if [ -n "$CLAUDE_SESSION_ID" ]; then
   copy_transcripts
 else
   # Running as a git pre-commit hook
+  if git check-ignore -q "$session_dir" 2>/dev/null; then
+    echo "simple-claude-save: .claude-sessions/ is .gitignored — remove it from .gitignore to save transcripts" >&2
+    exit 1
+  fi
   copy_transcripts
   if [ -d "$session_dir" ]; then
-    git add "$session_dir"/*.jsonl 2>/dev/null
+    git add "$session_dir"/*.jsonl 2>/dev/null || true
   fi
 fi
